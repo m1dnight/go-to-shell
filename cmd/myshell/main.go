@@ -22,9 +22,9 @@ func readCommand() {
 	command := parse(input)
 	result, err := evaluate(command)
 	if result != nil {
-		fmt.Println(printSuccess(result))
+		fmt.Print(printSuccess(result))
 	} else {
-		fmt.Println(printError(err))
+		fmt.Print(printError(err))
 	}
 
 	readCommand()

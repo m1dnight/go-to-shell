@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"slices"
 	"strconv"
 	"strings"
@@ -13,29 +14,27 @@ var commands = []string{"exit", "echo", "type"}
 var mappings = map[string]string{"cat": "/bin/cat"}
 
 func evaluate(command command) (*successResult, *errorResult) {
-	if !slices.Contains(commands, command.cmd) {
-		result := errorResult{message: "command not found", cmd: command.cmd}
-		return nil, &result
-	}
-
 	var sucResult *successResult = nil
 	var errResult *errorResult = nil
-	switch command.cmd {
-	case "exit":
-		sucResult, errResult = evalExit(command)
-		return sucResult, errResult
 
-	case "echo":
-		sucResult, errResult = evalEcho(command)
-		return sucResult, errResult
-	case "type":
-		sucResult, errResult = evalType(command)
-		return sucResult, errResult
+	if isBuiltIn(command) {
+		switch command.cmd {
+		case "exit":
+			sucResult, errResult = evalExit(command)
+			return sucResult, errResult
 
-	default:
-		errResult = &errorResult{message: "unknown error", cmd: command.cmd}
+		case "echo":
+			sucResult, errResult = evalEcho(command)
+			return sucResult, errResult
+		case "type":
+			sucResult, errResult = evalType(command)
+			return sucResult, errResult
+		}
+	} else {
+		sucResult, errResult = evalExecutable(command)
 		return sucResult, errResult
 	}
+	return sucResult, errResult
 }
 
 func evalExit(command command) (*successResult, *errorResult) {
@@ -64,7 +63,7 @@ func evalEcho(command command) (*successResult, *errorResult) {
 	var errResult *errorResult = nil
 
 	outputMessage := strings.Join(command.args, " ")
-	sucResult = &successResult{message: outputMessage}
+	sucResult = &successResult{message: outputMessage + "\n"}
 	return sucResult, errResult
 }
 
@@ -74,32 +73,61 @@ func evalType(command command) (*successResult, *errorResult) {
 
 	// expect exactly one argument
 	if len(command.args) != 1 {
-		errResult = &errorResult{message: "too few arguments", cmd: command.cmd}
+		errResult = &errorResult{message: "too few arguments\n", cmd: command.cmd}
 		return sucResult, errResult
 	}
 
 	// if the commands exists, it's a builtin
 	if slices.Contains(commands, command.args[0]) {
-		outputMessage := fmt.Sprintf("%s is a shell builtin", command.args[0])
+		outputMessage := fmt.Sprintf("%s is a shell builtin\n", command.args[0])
 		sucResult = &successResult{message: outputMessage}
 		return sucResult, errResult
 	}
 
 	// if the command is in the PATH, return the binding
-	executablePath := findInPath(os.Getenv("PATH"), command.args[0])
+	executablePath := findInPath(command.args[0])
 	if executablePath != nil {
-		outputMessage := fmt.Sprintf("%s is %s", command.args[0], *executablePath)
+		outputMessage := fmt.Sprintf("%s is %s\n", command.args[0], *executablePath)
 		sucResult = &successResult{message: outputMessage}
 		return sucResult, errResult
 	}
 
-	outputMessage := fmt.Sprintf("%s: not found", command.args[0])
+	outputMessage := fmt.Sprintf("%s: not found\n", command.args[0])
 	sucResult = &successResult{message: outputMessage}
 	return sucResult, errResult
 
 }
 
-func findInPath(path string, executable string) *string {
+func evalExecutable(command command) (*successResult, *errorResult) {
+	var sucResult *successResult = nil
+	var errResult *errorResult = nil
+
+	// if the command is not in the path, return an error saying it's not found
+	executablePath := findInPath(command.cmd)
+	if executablePath == nil {
+		outputMessage := fmt.Sprintf("%s: not found\n", command.cmd)
+		sucResult = &successResult{message: outputMessage}
+		return sucResult, errResult
+	}
+
+	cmd := exec.Command(*executablePath, command.args...)
+	var out strings.Builder
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	err := cmd.Run()
+	if err != nil {
+		errResult = &errorResult{message: fmt.Sprintf("command failed\n%s", out.String()), cmd: command.cmd}
+		return sucResult, errResult
+	}
+
+	outputMessage := fmt.Sprintf("%s", out.String())
+	sucResult = &successResult{message: outputMessage}
+	return sucResult, errResult
+
+}
+
+func findInPath(executable string) *string {
+	path := os.Getenv("PATH")
 	dirs := strings.Split(path, ":")
 
 	for _, path := range dirs {
@@ -118,4 +146,9 @@ func findInPath(path string, executable string) *string {
 
 	}
 	return nil
+}
+
+func isBuiltIn(command command) bool {
+	return slices.Contains(commands, command.cmd)
+
 }
