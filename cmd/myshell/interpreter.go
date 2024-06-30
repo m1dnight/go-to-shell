@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-var commands = []string{"exit", "echo", "type", "pwd"}
+var commands = []string{"exit", "echo", "type", "pwd", "cd"}
 
 var mappings = map[string]string{"cat": "/bin/cat"}
 
@@ -32,11 +32,34 @@ func evaluate(command command) (*successResult, *errorResult) {
 		case "pwd":
 			sucResult, errResult = evalPwd(command)
 			return sucResult, errResult
+		case "cd":
+			sucResult, errResult = evalCd(command)
+			return sucResult, errResult
 		}
 	} else {
 		sucResult, errResult = evalExecutable(command)
 		return sucResult, errResult
 	}
+	return sucResult, errResult
+}
+
+func evalCd(command command) (*successResult, *errorResult) {
+	var sucResult *successResult = nil
+	var errResult *errorResult = nil
+
+	// expectes 1 argument
+	if len(command.args) != 1 {
+		errResult = &errorResult{message: "too few arguments", cmd: command.cmd}
+		return sucResult, errResult
+	}
+
+	err := os.Chdir(command.args[0])
+	if err != nil {
+		errResult = &errorResult{message: fmt.Sprintf("%s: No such file or directory\n", command.args[0]), cmd: command.cmd}
+		return sucResult, errResult
+	}
+
+	sucResult = &successResult{message: ""}
 	return sucResult, errResult
 }
 
