@@ -1,13 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"slices"
 	"strconv"
 	"strings"
 )
 
-var commands = []string{"exit", "echo"}
+var commands = []string{"exit", "echo", "type"}
 
 func evaluate(command command) (*successResult, *errorResult) {
 	if !slices.Contains(commands, command.cmd) {
@@ -20,7 +21,7 @@ func evaluate(command command) (*successResult, *errorResult) {
 	switch command.cmd {
 	case "exit":
 		if len(command.args) != 1 {
-			errResult = &errorResult{message: "to few arguments", cmd: command.cmd}
+			errResult = &errorResult{message: "too few arguments", cmd: command.cmd}
 			return sucResult, errResult
 		}
 		exitCode := command.args[0]
@@ -33,6 +34,19 @@ func evaluate(command command) (*successResult, *errorResult) {
 		}
 	case "echo":
 		outputMessage := strings.Join(command.args, " ")
+		sucResult = &successResult{message: outputMessage}
+		return sucResult, errResult
+	case "type":
+		if len(command.args) != 1 {
+			errResult = &errorResult{message: "too few arguments", cmd: command.cmd}
+			return sucResult, errResult
+		}
+		if slices.Contains(commands, command.args[0]) {
+			outputMessage := fmt.Sprintf("%s is a shell builtin", command.args[0])
+			sucResult = &successResult{message: outputMessage}
+			return sucResult, errResult
+		}
+		outputMessage := fmt.Sprintf("%s: not found", command.args[0])
 		sucResult = &successResult{message: outputMessage}
 		return sucResult, errResult
 
