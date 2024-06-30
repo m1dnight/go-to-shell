@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-var commands = []string{"exit", "echo", "type"}
+var commands = []string{"exit", "echo", "type", "pwd"}
 
 var mappings = map[string]string{"cat": "/bin/cat"}
 
@@ -29,6 +29,9 @@ func evaluate(command command) (*successResult, *errorResult) {
 		case "type":
 			sucResult, errResult = evalType(command)
 			return sucResult, errResult
+		case "pwd":
+			sucResult, errResult = evalPwd(command)
+			return sucResult, errResult
 		}
 	} else {
 		sucResult, errResult = evalExecutable(command)
@@ -37,6 +40,19 @@ func evaluate(command command) (*successResult, *errorResult) {
 	return sucResult, errResult
 }
 
+func evalPwd(command command) (*successResult, *errorResult) {
+	var sucResult *successResult = nil
+	var errResult *errorResult = nil
+
+	path, err := os.Getwd()
+	if err != nil {
+		errResult = &errorResult{message: "error getting pwd", cmd: command.cmd}
+		return sucResult, errResult
+	}
+
+	sucResult = &successResult{message: path + "\n"}
+	return sucResult, errResult
+}
 func evalExit(command command) (*successResult, *errorResult) {
 	var sucResult *successResult = nil
 	var errResult *errorResult = nil
