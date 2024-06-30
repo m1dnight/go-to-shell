@@ -21,10 +21,10 @@ func readCommand() {
 	input, _ := bufio.NewReader(os.Stdin).ReadString('\n')
 	command := parse(input)
 	result, err := evaluate(command)
-	if err != nil {
-		fmt.Println(printError(err))
-	} else {
+	if result != nil {
 		fmt.Println(printSuccess(result))
+	} else {
+		fmt.Println(printError(err))
 	}
 
 	readCommand()
