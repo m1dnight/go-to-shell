@@ -54,14 +54,28 @@ func evalCd(command command) (*successResult, *errorResult) {
 		return sucResult, errResult
 	}
 
-	// create the path to CD to if its relative
-	absPath, err := filepath.Abs(command.args[0])
-	if err != nil {
-		errResult = &errorResult{message: fmt.Sprintf("%s: No such file or directory\n", command.args[0]), cmd: command.cmd}
-		return sucResult, errResult
+	var targetPath string
+
+	// if the argument is the tilde, go to the users homedir
+	if command.args[0] == "~" {
+		homedir, err := os.UserHomeDir()
+		if err != nil {
+			errResult = &errorResult{message: "could not determine homedir\n", cmd: command.cmd}
+			return sucResult, errResult
+		}
+		targetPath = homedir
+
+	} else {
+		// create the path to CD to if its relative
+		absPath, err := filepath.Abs(command.args[0])
+		if err != nil {
+			errResult = &errorResult{message: fmt.Sprintf("%s: No such file or directory\n", command.args[0]), cmd: command.cmd}
+			return sucResult, errResult
+		}
+		targetPath = absPath
 	}
 
-	err = os.Chdir(absPath)
+	err := os.Chdir(targetPath)
 	if err != nil {
 		errResult = &errorResult{message: fmt.Sprintf("%s: No such file or directory\n", command.args[0]), cmd: command.cmd}
 		return sucResult, errResult
